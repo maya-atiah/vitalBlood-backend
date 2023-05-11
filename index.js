@@ -3,7 +3,9 @@ const morgan = require('morgan');
 const cors = require('cors');
 const app = express();
 require('dotenv').config();
-const connectDB = require('./config/db');
+const connectDB = require('./Config/db');
+
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }))
