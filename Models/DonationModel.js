@@ -24,6 +24,7 @@ const donationSchema = new Schema({
     },
     details: {
         
+        
     },
     date: {
         type: Date,

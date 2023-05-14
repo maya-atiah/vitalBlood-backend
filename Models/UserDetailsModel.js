@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-
+const { isEmail } = require('validator');
 
 const userDetailsSchema = new Schema({
 
@@ -32,6 +32,7 @@ const userDetailsSchema = new Schema({
     },
     image: {
         type: String,
+        required: false,
     },
     marital_status: {
         type: String,

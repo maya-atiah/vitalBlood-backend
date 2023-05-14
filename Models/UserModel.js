@@ -9,13 +9,15 @@ const userSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'UserDetails'
     },
-    type_id: {
-        type: Schema.Types.ObjectId,
-        ref: 'UserTypes'
+    type: {
+        type: String,
+        enum: ["individual", "organization","admin"],
+    }
+        
     }
 
 
-})
+)
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;
