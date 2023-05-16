@@ -2,7 +2,17 @@ const User = require('../Models/UserModel')
 const UserDetails = require('../Models/UserDetailsModel')
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { getStorage, ref, getDownloadURL, uploadBytesResumable } = require("firebase/storage");
 
+
+//Initialize a firebase application
+// initializeApp(config.firebaseConfig);
+
+// Initialize Cloud Storage and get a reference to the service
+const storage = getStorage();
+
+// // Setting up multer as a middleware to grab photo uploads
+// const upload = multer({ storage: multer.memoryStorage() });
 
 ///********Register */
 exports.register = async (req, res) => {
@@ -193,24 +203,17 @@ exports.deleteUserById = async (req, res) => {
 
 ///****update user profile */
 exports.updateUserProfile = async (req, res) => {
-
     try {
-
         const userId = req.params.userId;
         const user = await User.findById(userId);
         const userDetails = await UserDetails.findById(user.details_id);
-
 
         if (!user || !userDetails) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-
-        const basePath = `${req.protocol}://${req.get("host")}/images`;
-        let image;
-        if (req.file) {
-            image = req.file.filename;
-        }
+        const image = await uploadImage(req.file);
+        const imageURL = image.downloadURL;
 
         userDetails.firstName = req.body.firstName || userDetails.firstName;
         userDetails.lastName = req.body.lastName || userDetails.lastName;
@@ -223,7 +226,7 @@ exports.updateUserProfile = async (req, res) => {
         userDetails.blood_type = req.body.blood_type || userDetails.blood_type;
         userDetails.nationality = req.body.nationality || userDetails.nationality;
         userDetails.emergency_number = req.body.emergency_number || userDetails.emergency_number;
-        userDetails.image = `${basePath}/${image}`;
+        userDetails.image = imageURL;
 
         await userDetails.save();
 
@@ -232,5 +235,44 @@ exports.updateUserProfile = async (req, res) => {
         console.log(error);
         return res.status(500).json({ message: 'Internal server error' });
     }
+};
 
+
+
+const uploadImage = async (file) => {
+   
+        const dateTime = giveCurrentDateTime();
+
+        const storageRef = ref(storage, `files/${file.originalname + "       " + dateTime}`);
+
+        // Create file metadata including the content type
+        const metadata = {
+            contentType: file.mimetype,
+        };
+
+        // Upload the file in the bucket storage
+        const snapshot = await uploadBytesResumable(storageRef, file.buffer, metadata);
+        //by using uploadBytesResumable we can control the progress of uploading like pause, resume, cancel
+
+        // Grab the public url
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
+        console.log('File successfully uploaded.');
+        return {
+            message: 'file uploaded to firebase storage',
+            name: file.originalname,
+            type: file.mimetype,
+            downloadURL: downloadURL
+        }
+    
+}
+
+
+
+const giveCurrentDateTime = () => {
+    const today = new Date();
+    const date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+    const time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+    const dateTime = date + ' ' + time;
+    return dateTime;
 }
