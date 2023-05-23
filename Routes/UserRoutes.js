@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const upload = require("../Middleware/uploadMiddleware.js");
 const multer = require('multer');
+const { isAuthenticated } = require('../Middleware/userAuthMiddleware');
 
 const { initializeApp } = require('firebase/app');
 const firebaseConfig = require('../Config/firebase.js')
@@ -23,7 +24,7 @@ const {
 router.post('/register', upload.single('image'), register);
 router.post('/login', login);
 router.get('/getAllUsers', getAllUsers);
-router.get('/getUserbyid/:userId', getUserbyid);
+router.get('/getUserbyid',isAuthenticated, getUserbyid);
 router.delete('/deleteUser/:userId', deleteUserById);
 router.put('/updateUserProfile/:userId', uploadNew.single("image"),updateUserProfile)
 

@@ -13,7 +13,8 @@ const userSchema = new Schema({
         type: String,
         enum: ["individual", "organization","admin"],
     }
-        
+
+
     }
 
 

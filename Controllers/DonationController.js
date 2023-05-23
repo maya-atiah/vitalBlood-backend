@@ -1,14 +1,30 @@
 const Donation = require('../Models/DonationModel');
+const UserDetails = require('../Models/UserDetailsModel')
+const RequestToDonate = require('../Models/RequestToDonate');
+const nodemailer = require('nodemailer');
+const path = require('path');
+const fs = require('fs');
+
 
 //****Place a Request */
 exports.createDonationRequest = async (req, res) => {
-
     try {
-        const { userId, firstName, lastName, dateOfBirth, caseType, caseDetails, bloodType, dateNeeded, hospital, levelOfEmergency } = req.body;
+        const {
+            firstName,
+            lastName,
+            dateOfBirth,
+            caseType,
+            caseDetails,
+            bloodType,
+            dateNeeded,
+            hospital,
+            levelOfEmergency,
+            numberOfUnits
+        } = req.body;
 
-
-        const request = new Donation({
-            receiver_id: userId,
+        // Create a new donation request
+        const donationRequest = new Donation({
+            receiver_id: req.user,
             status: 'pending',
             type: 'request',
             details: {
@@ -18,36 +34,127 @@ exports.createDonationRequest = async (req, res) => {
                     lastName,
                     dateOfBirth,
                     caseType,
-                    caseDetails,
+                    caseDetails
                 },
                 bloodRequest: {
                     bloodType,
                     dateNeeded,
                     hospital,
                     levelOfEmergency,
-                },
-            },
-        })
+                    numberOfUnits
+                }
+            }
+        });
 
-        await request.save();
+        await donationRequest.save();
 
-        return res.json(request);
+        const logoPath = path.join(__dirname, 'image', 'logo.png');
+        const logoData = fs.readFileSync(logoPath);
+        const logoBase64 = logoData.toString('base64');
+        const logoSrc = `data:image/png;base64,${logoBase64}`;
+
+        const receiverDetails = await UserDetails.findOne({ user_id: req.user }).lean();
+
+        const receiverEmail = receiverDetails.email;
+        const receiverPhone = receiverDetails.phoneNumber;
+        const receiverName = `${receiverDetails.firstName} ${receiverDetails.lastName}`;
+
+
+        const html = `
+       <html>
+      <head>
+        <style>
+          h1 {
+            color: #A30000;
+          }
+          h2{
+            color: #A30000;
+          }
+          h6 {
+            color: #A30000;
+          }
+          p {
+            font-size: 13px;
+            color: #3D3D3D;
+            line-height:15px;
+          }
+          h4{
+             color: #3D3D3D;
+          }
+          .container {
+            margin: 20px;
+            padding: 20px;
+            background-color: #f2f1f0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+        <img src="${logoSrc}" alt="Logo" width="100" height="50"/>
+         <h1>Save a life</h1>
+          <h4>A new donation request has been submitted. Please check your account for details.</h4>
+          <br>
+          <h2>Donation Request Details:</h2>
+          <h3>Patient Details:</h3>
+          <p><strong>Full Name:</strong> ${firstName} ${lastName}</p>
+          <p><strong>Date of Birth:</strong> ${dateOfBirth}</p>
+          <p><strong>Case Type:</strong> ${caseType}</p>
+          <p><strong>Case Details:</strong> ${caseDetails}</p>
+          <p><strong>Blood Type:</strong> ${bloodType}</p>
+          <p><strong>Date Needed:</strong> ${dateNeeded}</p>
+          <p><strong>Hospital:</strong> ${hospital}</p>
+          <p><strong>Level of Emergency:</strong> ${levelOfEmergency}</p>
+          <p><strong>Number of Units:</strong> ${numberOfUnits}</p>
+          <br>
+          <h2>Receiver's Details:</h2>
+          <p><strong>Email:</strong> ${receiverEmail}</p>
+          <p><strong>Phone:</strong> ${receiverPhone}</p>
+          <p><strong>Name:</strong> ${receiverName}</p>
+          <h6>&copy; 2023 Vital Blood. All rights reserved.</h6>
+        </div>
+      </body>
+      </html>
+    `;
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: 'vital.blood.donation@gmail.com',
+                pass: 'gqxjxatnuitwtgjw'
+            }
+        });
+
+        // Send an email to all users
+        // const users = await UserDetails.find().lean();
+        // const userEmails = users.map((user) => user.email);
+        // userEmails.join(', ')
+        const mailOptions = {
+            from: 'vital.blood.donation@gmail.com',
+            to: '', 
+            bcc:'winxmaya99@gmail.com',
+            subject: 'New Donation Request',
+            html: html,
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        return res.json(donationRequest);
     } catch (error) {
         console.log(error);
         return res.status(500).json({ message: 'Internal server error' });
     }
+};
 
-}
 
 
 ///***PLace a Donation */
 exports.createBloodDonation = async (req, res) => {
     try {
-        const donorId = req.user._id; // Assuming the donor is the authenticated user
-        const { firstName, lastName, dateOfBirth, caseType, caseDetails, bloodType } = req.body;
+
+        const { firstName, lastName, dateOfBirth, caseType, caseDetails, bloodType, hospital } = req.body;
 
         const donation = new Donation({
-            donor_id: donorId,
+            donor_id: req.user,
             status: 'pending',
             type: 'donate',
             details: {
@@ -61,11 +168,13 @@ exports.createBloodDonation = async (req, res) => {
                 },
                 bloodRequest: {
                     bloodType,
+                    hospital,
                 },
             },
         });
 
         await donation.save();
+
 
         return res.json(donation);
     } catch (error) {
@@ -75,40 +184,206 @@ exports.createBloodDonation = async (req, res) => {
 };
 
 ////***Donate a request and inform the receiver to accept *///
-exports.donateToRequest = async (req, res) => {
+exports.requestToDonate = async (req, res) => {
     try {
-        const { donationRequestId, userId } = req.body;
+        const { donationRequestId } = req.params;
+        const donorId = req.user;
 
-        const donationRequest = await Donation.findById(donationRequestId)
+        // Check if the donation request exists
+        const donationRequest = await Donation.findOne({
+            _id: donationRequestId,
+            type: 'request',
+        });
 
-        if (!donationRequest || donationRequest.type !== 'request' || donationRequest.status !== 'pending') {
-            return res.status(404).json({ message: 'Donation request not found or not pending' });
+        if (!donationRequest) {
+            return res.status(404).json({ message: 'Donation request not found' });
         }
 
+        // Check if the donor has already requested to donate for this request
+        const existingRequest = await RequestToDonate.findOne({
+            donor_id: donorId,
+            donationRequest_id: donationRequestId,
+        });
 
-        donationRequest.receiver_id = userId;
-        donationRequest.status = 'accepted';
+        if (existingRequest) {
+            return res.status(400).json({
+                message: 'Donor has already requested to donate for this request',
+            });
+        }
 
+        // Create a new request to donate
+        const requestToDonate = new RequestToDonate({
+            donor_id: donorId,
+            receiver_id: donationRequest.receiver_id,
+            donationRequest_id: donationRequestId,
+        });
 
+        // Save the request to donate
+        await requestToDonate.save();
+
+        // Update the donation request's request_id array with the new request's ID
+        donationRequest.request_id.push(requestToDonate._id);
+
+        // Save the updated donation request
         await donationRequest.save();
 
+        // Set the 'disabled' field to indicate that the donor has not donated to this request
+        const modifiedRequestToDonate = requestToDonate.toObject();
+        modifiedRequestToDonate.disabled = false;
 
+        const receiverDetails = await UserDetails.findOne({ user_id: donationRequest.receiver_id }).lean();
+        const donorDetails = await UserDetails.findOne({ user_id: donorId }).lean();
 
-        return res.json(donationRequest);
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: 'vital.blood.donation@gmail.com',
+                pass: 'gqxjxatnuitwtgjw',
+            },
+        });
 
+        const logoPath = path.join(__dirname, 'image', 'logo.png');
+        const logoData = fs.readFileSync(logoPath);
+        const logoBase64 = logoData.toString('base64');
+        const logoSrc = `data:image/png;base64,${logoBase64}`;
 
+        const mailOptions = {
+            from: 'vital.blood.donation@gmail.com',
+            to: receiverDetails.email,
+            subject: 'Confirmation of Donation Request',
+            html: `<div style="font-family: Arial, sans-serif; font-size: 16px;">
+          <h1 style="color: #A30000;">Save a life</h1>
+          <img src="${logoSrc}" alt="Logo" width="100" height="50" style="margin-bottom: 20px;">
+          <p style="color: #333; margin-bottom: 20px;">
+              Dear ${receiverDetails.firstName},
+          </p>
+          <p style="color: #333; margin-bottom: 20px;">
+              I am writing to confirm my request to donate for your blood donation request. Please let me know the details and arrangements for the donation.
+          </p>
+          <p style="color: #333;">
+              Thank you.
+          </p>
+          <p style="color: #333;">
+              Sincerely,
+              <br>
+              ${donorDetails.firstName} ${donorDetails.lastName}
+          </p>
+      </div>`,
+        };
+
+        await transporter.sendMail(mailOptions);
+        return res.json(modifiedRequestToDonate);
     } catch (error) {
         console.log(error);
         return res.status(500).json({ message: 'Internal server error' });
     }
-}
+};
+
+
+
+
+
+
+///***Accept donation request ***/////
+exports.acceptDonationRequest = async (req, res) => {
+    try {
+        const { donationRequestId } = req.params;
+        const receiverId = req.user;
+        const { requestId, status } = req.body;
+
+        // Find the donation request
+        const donationRequest = await Donation.findById(donationRequestId);
+
+        if (!donationRequest || donationRequest.type !== 'request') {
+            return res.status(404).json({ message: 'Donation request not found' });
+        }
+
+        // Find the request to donate
+        const requestToDonate = await RequestToDonate.findById(requestId);
+
+        if (!requestToDonate) {
+            return res.status(404).json({ message: 'Request to donate not found' });
+        }
+
+        // Verify that the request is associated with the donation request and receiver
+        if (
+            !donationRequest.request_id.includes(requestToDonate._id) &&
+            requestToDonate.receiver_id.toString() !== receiverId
+        ) {
+            return res.status(400).json({ message: 'Invalid request to donate' });
+        }
+
+        // Update the status of the request to donate based on the provided status
+        requestToDonate.status = status;
+
+        await requestToDonate.save();
+
+        // Send an email notification to the donor
+        const donorDetails = await UserDetails.findOne({ user_id: requestToDonate.donor_id }).lean();
+        const receiverDetails = await UserDetails.findOne({ user_id: receiverId }).lean();
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: 'vital.blood.donation@gmail.com',
+                pass: 'gqxjxatnuitwtgjw'
+            }
+        });
+
+        const logoPath = path.join(__dirname, 'image', 'logo.png');
+        const logoData = fs.readFileSync(logoPath);
+        const logoBase64 = logoData.toString('base64');
+        const logoSrc = `data:image/png;base64,${logoBase64}`;
+
+        const subject = status === 'accepted' ? 'Donation Request Accepted' : 'Donation Request Rejected';
+
+        const mailOptions = {
+            from: receiverDetails.email, 
+            to: donorDetails.email,
+            subject: subject,
+            html: `<div style="font-family: Arial, sans-serif; font-size: 16px;">
+                <h1 style="color: #A30000;">Save a life</h1>
+                <img src="${logoSrc}" alt="Logo" width="200" height="100" style="margin-bottom: 20px;">
+                <p style="color: #333; margin-bottom: 20px;">
+                    Dear ${donorDetails.firstName},
+                </p>
+                <p style="color: #333; margin-bottom: 20px;">
+                    Your donation request has been ${status}. Thank you for your willingness to donate.
+                </p>
+                <p style="color: #333;">
+                    Sincerely,
+                    <br>
+                    ${receiverDetails.firstName} ${receiverDetails.lastName}
+                </p>
+            </div>`,
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        return res.json(requestToDonate);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+
+
+
+
 
 
 ////***GEt all donations *////
 exports.getAllDonationRequests = async (req, res) => {
     try {
-
-        const donationRequests = await Donation.find({ type: 'request', status: 'pending' });
+        const donationRequests = await Donation.find({ type: 'request', status: 'pending' })
+            .populate({
+                path: 'receiver_id',
+                populate: {
+                    path: 'details_id',
+                    model: UserDetails
+                }
+            });
 
         return res.json(donationRequests);
     } catch (error) {

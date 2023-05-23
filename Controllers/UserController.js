@@ -16,8 +16,8 @@ const storage = getStorage();
 
 ///********Register */
 exports.register = async (req, res) => {
-
-    const { firstName,
+    const {
+        firstName,
         lastName,
         email,
         password,
@@ -29,19 +29,29 @@ exports.register = async (req, res) => {
         blood_type,
         nationality,
         emergency_number,
-        type } = req.body;
+        type
+    } = req.body;
 
     let image;
     if (req.file) {
         image = req.file.filename;
     }
-    // const basePath = `${req.protocol}://${req.get("host")}/images`;
-    //   const Image= req.files.map((file) => `${basePath}/${file.filename}`);
 
-
-    if (!firstName || !lastName || !password || !phoneNumber || !location || !marital_status || !gender || !id_number || !blood_type || !nationality || !emergency_number) {
-        return res.status(422).send({ message: "Please fill in all required fields" });
-    }
+    // if (
+    //     !firstName ||
+    //     !lastName ||
+    //     !password ||
+    //     !phoneNumber ||
+    //     !location ||
+    //     !marital_status ||
+    //     !gender ||
+    //     !id_number ||
+    //     !blood_type ||
+    //     !nationality ||
+    //     !emergency_number
+    // ) {
+    //     return res.status(422).send({ message: "Please fill in all required fields" });
+    // }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -49,13 +59,11 @@ exports.register = async (req, res) => {
         return res.status(422).send({ message: "Please enter a valid email address" });
     }
 
-    const userExists = await UserDetails.findOne({ email })
-    //    return  res.status(200).send(userExists)
+    const userExists = await UserDetails.findOne({ email });
 
     if (userExists) {
         return res.status(422).send({ message: "User with that email address already exists" });
     }
-
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -73,21 +81,24 @@ exports.register = async (req, res) => {
         blood_type,
         nationality,
         emergency_number,
-        is_deleted: false
+        is_deleted: false,
+        user_id: null
     });
-
-
 
     await userDetails.save();
 
-    const user = await User({
+    const user = new User({
         details_id: userDetails._id,
         type
     });
 
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    // Update the user_id in the UserDetails model
+    userDetails.user_id = user._id;
+    await userDetails.save();
+
+    const token = jwt.sign({ userId: user._id }, process.env.ACCESS_TOKEN_SECRET);
 
     if (user) {
         res.status(201).json({
@@ -97,38 +108,30 @@ exports.register = async (req, res) => {
             token: token
         });
     }
-
-
-}
+};
 
 
 
 ///******Login */
 exports.login = async (req, res) => {
-
     const { email, password } = req.body;
-
-    // console.log('body',req.body)
 
     try {
         // Find the user by email
         const userDetails = await UserDetails.findOne({ email });
 
-
         if (!userDetails) {
             return res.status(401).json({ message: 'Invalid email' });
         }
-
 
         const isPasswordMatch = await bcrypt.compare(password, userDetails.password);
         if (!isPasswordMatch) {
             return res.status(401).json({ message: 'Incorrect password' });
         }
 
-        const token = jwt.sign({ userId: userDetails.user_id }, process.env.JWT_SECRET);
+        const token = jwt.sign({ userId: userDetails.user_id }, process.env.ACCESS_TOKEN_SECRET);
 
         res.status(200).json({ token });
-
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Something went wrong' });
@@ -136,6 +139,12 @@ exports.login = async (req, res) => {
 };
 
 
+
+
+// Generate JWT
+const generateToken = (id) => {
+    return jwt.sign({ id }, process.env.ACCESS_TOKEN_SECRET);
+};
 
 ///***Users */
 exports.getAllUsers = async (req, res) => {
@@ -154,20 +163,23 @@ exports.getAllUsers = async (req, res) => {
 
 ///*****Get User by id */
 exports.getUserbyid = async (req, res) => {
-    const userId = req.params.userId
+    const userId = req.user._id;
     try {
         const user = await User.findById(userId).populate('details_id');
         if (!user) {
-            return res.status(404).json({ message: 'User not found' })
+            return res.status(404).json({ message: 'User not found' });
         }
-        const userDetails = await UserDetails.findById(user.details_id)
-
-        res.status(500).json({ user })
-
+        const userDetails = await UserDetails.findById(user.details_id).lean();
+        console.log(user);
+        const userWithDetails = {
+            ...user.toObject(),
+            details: userDetails
+        };
+        res.status(200).json(userWithDetails);
     } catch (error) {
-        res.status(500).json({ message: 'Error' })
+        res.status(500).json({ message: 'Error' });
     }
-}
+};
 
 
 exports.deleteUserById = async (req, res) => {
@@ -240,31 +252,31 @@ exports.updateUserProfile = async (req, res) => {
 
 
 const uploadImage = async (file) => {
-   
-        const dateTime = giveCurrentDateTime();
 
-        const storageRef = ref(storage, `files/${file.originalname + "       " + dateTime}`);
+    const dateTime = giveCurrentDateTime();
 
-        // Create file metadata including the content type
-        const metadata = {
-            contentType: file.mimetype,
-        };
+    const storageRef = ref(storage, `files/${file.originalname + "       " + dateTime}`);
 
-        // Upload the file in the bucket storage
-        const snapshot = await uploadBytesResumable(storageRef, file.buffer, metadata);
-        //by using uploadBytesResumable we can control the progress of uploading like pause, resume, cancel
+    // Create file metadata including the content type
+    const metadata = {
+        contentType: file.mimetype,
+    };
 
-        // Grab the public url
-        const downloadURL = await getDownloadURL(snapshot.ref);
+    // Upload the file in the bucket storage
+    const snapshot = await uploadBytesResumable(storageRef, file.buffer, metadata);
+    //by using uploadBytesResumable we can control the progress of uploading like pause, resume, cancel
 
-        console.log('File successfully uploaded.');
-        return {
-            message: 'file uploaded to firebase storage',
-            name: file.originalname,
-            type: file.mimetype,
-            downloadURL: downloadURL
-        }
-    
+    // Grab the public url
+    const downloadURL = await getDownloadURL(snapshot.ref);
+
+    console.log('File successfully uploaded.');
+    return {
+        message: 'file uploaded to firebase storage',
+        name: file.originalname,
+        type: file.mimetype,
+        downloadURL: downloadURL
+    }
+
 }
 
 
