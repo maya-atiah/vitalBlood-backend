@@ -163,8 +163,7 @@ exports.createBloodDonation = async (req, res) => {
                     firstName,
                     lastName,
                     dateOfBirth,
-                    caseType,
-                    caseDetails,
+                  
                 },
                 bloodRequest: {
                     bloodType,
@@ -397,10 +396,18 @@ exports.getAllDonationRequests = async (req, res) => {
 
 exports.getDonationsByUser = async (req, res) => {
     try {
-        const userId = req.params.userId;
+        const userId = req.user;
         const donations = await Donation.find({
             $or: [{ donor_id: userId }, { receiver_id: userId }],
-        });
+        })
+            .populate({
+                path: 'request_id',
+                populate: [
+                    { path: 'donor_id', populate: { path: 'details_id' } },
+                    { path: 'receiver_id', populate: { path: 'details_id' } }
+                ]
+            })
+            .exec();
 
         return res.json(donations);
     } catch (error) {
@@ -408,6 +415,7 @@ exports.getDonationsByUser = async (req, res) => {
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
+
 
 
 
@@ -423,6 +431,37 @@ exports.getDonationById = async (req, res) => {
         }
 
         return res.json(donation);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+
+// Delete Donation by ID
+exports.deleteDonationById = async (req, res) => {
+    try {
+        const userId = req.user;
+        const donationId = req.params.donationId;
+
+        // Find the donation to check if the user has permission to delete it
+        const donation = await Donation.findById(donationId);
+
+        if (!donation) {
+            return res.status(404).json({ message: 'Donation not found' });
+        }
+
+        // Check if the user is the donor or receiver of the donation
+        // if ((donation.donor_id && donation.donor_id.toString() !== userId) || (donation.receiver_id && donation.receiver_id.toString() !== userId)) {
+            
+        //         return res.status(403).json({ message: 'User does not have permission to delete this donation' });
+         
+        // }
+
+        // Delete the donation
+        await Donation.findByIdAndDelete(donationId);
+
+        return res.json({ message: 'Donation deleted successfully' });
     } catch (error) {
         console.log(error);
         return res.status(500).json({ message: 'Internal server error' });

@@ -9,7 +9,8 @@ const { createDonationRequest,
     getAllDonationRequests,
     getDonationsByUser,
     getDonationById, 
-    acceptDonationRequest} = require('../Controllers/DonationController')
+    acceptDonationRequest,
+    deleteDonationById} = require('../Controllers/DonationController')
 
 
 router.post('/createRequest',isAuthenticated, createDonationRequest);
@@ -18,7 +19,8 @@ router.post('/donateToRequest/:donationRequestId', isAuthenticated, requestToDon
 );
 router.post('/acceptDonationRequest/:donationRequestId', isAuthenticated, acceptDonationRequest);
 router.get('/getAllDonationRequest', getAllDonationRequests);
-router.get('/getDonationsByUser/:userId', getDonationsByUser);
+router.get('/getDonationsByUser',isAuthenticated, getDonationsByUser);
 router.get('/getDonationById/:donationId', getDonationById);
+router.delete('/deleteDonationById/:donationId', isAuthenticated, deleteDonationById)
 
 module.exports = router;

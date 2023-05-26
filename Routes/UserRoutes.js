@@ -11,6 +11,7 @@ initializeApp(firebaseConfig);
 
 // Setting up multer as a middleware
 const uploadNew = multer({ storage: multer.memoryStorage() });
+
 const {
     register,
     login,
@@ -21,11 +22,11 @@ const {
 } = require('../Controllers/UserController');
 
 
-router.post('/register', upload.single('image'), register);
+router.post('/register', register);
 router.post('/login', login);
 router.get('/getAllUsers', getAllUsers);
 router.get('/getUserbyid',isAuthenticated, getUserbyid);
 router.delete('/deleteUser/:userId', deleteUserById);
-router.put('/updateUserProfile/:userId', uploadNew.single("image"),updateUserProfile)
+router.put('/updateUserProfile',isAuthenticated, uploadNew.single("image"),updateUserProfile)
 
 module.exports = router;
