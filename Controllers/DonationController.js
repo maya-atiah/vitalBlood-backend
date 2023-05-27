@@ -168,6 +168,7 @@ exports.createBloodDonation = async (req, res) => {
                 bloodRequest: {
                     bloodType,
                     hospital,
+                    dateNeeded
                 },
             },
         });

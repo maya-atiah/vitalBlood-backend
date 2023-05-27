@@ -29,6 +29,7 @@ exports.register = async (req, res) => {
         blood_type,
         nationality,
         emergency_number,
+        dateOfBirth,
         type
     } = req.body;
 
@@ -81,6 +82,7 @@ exports.register = async (req, res) => {
         blood_type,
         nationality,
         emergency_number,
+        dateOfBirth,
         is_deleted: false,
         user_id: null
     });

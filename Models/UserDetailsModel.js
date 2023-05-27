@@ -53,6 +53,9 @@ const userDetailsSchema = new Schema({
     emergency_number: {
         type: Number,
     },
+    dateOfBirth: {
+        type:Date
+    },
     user_id: {
         type: Schema.Types.ObjectId,
         ref: 'User',
