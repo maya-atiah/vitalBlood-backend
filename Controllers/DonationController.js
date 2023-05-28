@@ -151,7 +151,7 @@ exports.createDonationRequest = async (req, res) => {
 exports.createBloodDonation = async (req, res) => {
     try {
 
-        const { firstName, lastName, dateOfBirth, caseType, caseDetails, bloodType, hospital } = req.body;
+        const { firstName, lastName, dateOfBirth,  bloodType, hospital,phoneNumber,dateNeeded } = req.body;
 
         const donation = new Donation({
             donor_id: req.user,
@@ -163,6 +163,7 @@ exports.createBloodDonation = async (req, res) => {
                     firstName,
                     lastName,
                     dateOfBirth,
+                    phoneNumber
                   
                 },
                 bloodRequest: {
@@ -207,7 +208,7 @@ exports.requestToDonate = async (req, res) => {
 
         if (existingRequest) {
             return res.status(400).json({
-                message: 'Donor has already requested to donate for this request',
+                message: 'You had already requested to donate for this request',
             });
         }
 
@@ -218,13 +219,13 @@ exports.requestToDonate = async (req, res) => {
             donationRequest_id: donationRequestId,
         });
 
-        // Save the request to donate
+        
         await requestToDonate.save();
 
         // Update the donation request's request_id array with the new request's ID
         donationRequest.request_id.push(requestToDonate._id);
 
-        // Save the updated donation request
+       
         await donationRequest.save();
 
         // Set the 'disabled' field to indicate that the donor has not donated to this request
@@ -233,6 +234,10 @@ exports.requestToDonate = async (req, res) => {
 
         const receiverDetails = await UserDetails.findOne({ user_id: donationRequest.receiver_id }).lean();
         const donorDetails = await UserDetails.findOne({ user_id: donorId }).lean();
+
+
+        const donorEmail = donorDetails.email;
+        const donorsPhone = donorDetails.phoneNumber;
 
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -257,8 +262,11 @@ exports.requestToDonate = async (req, res) => {
           <p style="color: #333; margin-bottom: 20px;">
               Dear ${receiverDetails.firstName},
           </p>
-          <p style="color: #333; margin-bottom: 20px;">
+          <p style="color: #333; margin-bottom: 10px;">
               I am writing to confirm my request to donate for your blood donation request. Please let me know the details and arrangements for the donation.
+          </p>
+          <h4 style="color: #A3000;">Contact me </h4>
+          <p>Email: ${donorEmail} <br>Phone Number: ${donorsPhone}
           </p>
           <p style="color: #333;">
               Thank you.
@@ -453,18 +461,21 @@ exports.deleteDonationById = async (req, res) => {
         }
 
         // Check if the user is the donor or receiver of the donation
-        // if ((donation.donor_id && donation.donor_id.toString() !== userId) || (donation.receiver_id && donation.receiver_id.toString() !== userId)) {
-            
-        //         return res.status(403).json({ message: 'User does not have permission to delete this donation' });
-         
+        // if (
+        //     donation.donor_id.toString() !== userId &&
+        //     donation.receiver_id.toString() !== userId
+        // ) {
+        //     return res.status(403).json({ message: 'User does not have permission to delete this donation' });
         // }
 
-        // Delete the donation
+        // Delete the donation and the associated RequestToDonate documents
         await Donation.findByIdAndDelete(donationId);
+        await RequestToDonate.deleteMany({ donationRequest_id: donationId });
 
-        return res.json({ message: 'Donation deleted successfully' });
+        return res.json({ message: 'Donation and associated RequestToDonate deleted successfully' });
     } catch (error) {
         console.log(error);
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
+

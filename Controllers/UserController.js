@@ -219,17 +219,17 @@ exports.deleteUserById = async (req, res) => {
 exports.updateUserProfile = async (req, res) => {
     try {
         const userId = req.user;
-       
+
         const user = await User.findById(userId);
         const userDetails = await UserDetails.findById(user.details_id);
         if (!user || !userDetails) {
             return res.status(404).json({ message: 'User not found' });
         }
-  console.log(req.file)
+        console.log(req.file)
         const image = await uploadImage(req.file);
-        
+
         const imageURL = image.downloadURL;
-     
+
         userDetails.firstName = req.body.firstName || userDetails.firstName;
         userDetails.lastName = req.body.lastName || userDetails.lastName;
         userDetails.email = req.body.email || userDetails.email;
@@ -272,7 +272,7 @@ const uploadImage = async (file) => {
     // Grab the public url
     const downloadURL = await getDownloadURL(snapshot.ref);
 
-   
+
     return {
         message: 'file uploaded to firebase storage',
         name: file.originalname,
