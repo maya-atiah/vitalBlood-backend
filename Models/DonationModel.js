@@ -45,7 +45,7 @@ const donationSchema = new Schema({
         type: Date,
         default: Date.now
     },
-    request_id:[ {
+    request_id: [{
         type: Schema.Types.ObjectId,
         ref: 'RequestToDonate'
     }]

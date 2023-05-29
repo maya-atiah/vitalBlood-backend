@@ -21,6 +21,7 @@ exports.register = async (req, res) => {
         lastName,
         email,
         password,
+        confirmPassword,
         phoneNumber,
         location,
         marital_status,
@@ -54,6 +55,9 @@ exports.register = async (req, res) => {
     //     return res.status(422).send({ message: "Please fill in all required fields" });
     // }
 
+    // if (password !== confirmPassword) {
+    //     return res.status(422).send({ message: "Password and confirm password do not match" });
+    // }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email)) {

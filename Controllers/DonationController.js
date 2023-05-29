@@ -130,8 +130,8 @@ exports.createDonationRequest = async (req, res) => {
         // userEmails.join(', ')
         const mailOptions = {
             from: 'vital.blood.donation@gmail.com',
-            to: '', 
-            bcc:'winxmaya99@gmail.com',
+            to: '',
+            bcc: 'winxmaya99@gmail.com',
             subject: 'New Donation Request',
             html: html,
         };
@@ -151,7 +151,7 @@ exports.createDonationRequest = async (req, res) => {
 exports.createBloodDonation = async (req, res) => {
     try {
 
-        const { firstName, lastName, dateOfBirth,  bloodType, hospital,phoneNumber,dateNeeded } = req.body;
+        const { firstName, lastName, dateOfBirth, bloodType, hospital, phoneNumber, dateNeeded } = req.body;
 
         const donation = new Donation({
             donor_id: req.user,
@@ -164,7 +164,7 @@ exports.createBloodDonation = async (req, res) => {
                     lastName,
                     dateOfBirth,
                     phoneNumber
-                  
+
                 },
                 bloodRequest: {
                     bloodType,
@@ -219,13 +219,13 @@ exports.requestToDonate = async (req, res) => {
             donationRequest_id: donationRequestId,
         });
 
-        
+
         await requestToDonate.save();
 
         // Update the donation request's request_id array with the new request's ID
         donationRequest.request_id.push(requestToDonate._id);
 
-       
+
         await donationRequest.save();
 
         // Set the 'disabled' field to indicate that the donor has not donated to this request
@@ -346,7 +346,7 @@ exports.acceptDonationRequest = async (req, res) => {
         const subject = status === 'accepted' ? 'Donation Request Accepted' : 'Donation Request Rejected';
 
         const mailOptions = {
-            from: receiverDetails.email, 
+            from: receiverDetails.email,
             to: donorDetails.email,
             subject: subject,
             html: `<div style="font-family: Arial, sans-serif; font-size: 16px;">
@@ -385,14 +385,14 @@ exports.acceptDonationRequest = async (req, res) => {
 exports.getAllDonationRequests = async (req, res) => {
     try {
         const donationRequests = await Donation.find({ type: 'request', status: 'pending' })
+            .populate('request_id')
             .populate({
                 path: 'receiver_id',
                 populate: {
                     path: 'details_id',
-                    model: UserDetails
+                    model: 'UserDetails'
                 }
             });
-
         return res.json(donationRequests);
     } catch (error) {
         console.log(error);
