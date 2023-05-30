@@ -176,7 +176,7 @@ exports.getUserbyid = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
         const userDetails = await UserDetails.findById(user.details_id).lean();
-        console.log(user);
+      
         const userWithDetails = {
             ...user.toObject(),
             details: userDetails
@@ -229,7 +229,7 @@ exports.updateUserProfile = async (req, res) => {
         if (!user || !userDetails) {
             return res.status(404).json({ message: 'User not found' });
         }
-        console.log(req.file)
+      
         const image = await uploadImage(req.file);
 
         const imageURL = image.downloadURL;

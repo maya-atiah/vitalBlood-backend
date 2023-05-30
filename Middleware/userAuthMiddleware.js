@@ -15,11 +15,11 @@ const isAuthenticated = asyncHandler(async (req, res, next) => {
             
             //verify token
             const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-            console.log('decoded',decoded)
+           
             //get user from tokenp
             const user = await User.findById(decoded.userId);
 
-            console.log(decoded.userId)           
+                  
             if (!user) {
                 return res.status(401).json({ message: 'User not found' });
             }

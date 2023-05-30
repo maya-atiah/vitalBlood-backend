@@ -125,13 +125,13 @@ exports.createDonationRequest = async (req, res) => {
         });
 
         // Send an email to all users
-        // const users = await UserDetails.find().lean();
-        // const userEmails = users.map((user) => user.email);
-        // userEmails.join(', ')
+        const users = await UserDetails.find().lean();
+        const userEmails = users.map((user) => user.email);
+       
         const mailOptions = {
             from: 'vital.blood.donation@gmail.com',
             to: '',
-            bcc: 'winxmaya99@gmail.com',
+            bcc: userEmails.join(', '),
             subject: 'New Donation Request',
             html: html,
         };
