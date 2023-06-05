@@ -58,7 +58,8 @@ exports.createDonationRequest = async (req, res) => {
         const receiverEmail = receiverDetails.email;
         const receiverPhone = receiverDetails.phoneNumber;
         const receiverName = `${receiverDetails.firstName} ${receiverDetails.lastName}`;
-
+        
+        const url =`https://vitalblood.netlify.app/feed`
 
         const html = `
        <html>
@@ -105,6 +106,7 @@ exports.createDonationRequest = async (req, res) => {
           <p><strong>Hospital:</strong> ${hospital}</p>
           <p><strong>Level of Emergency:</strong> ${levelOfEmergency}</p>
           <p><strong>Number of Units:</strong> ${numberOfUnits}</p>
+          <p>${url}</p>
           <br>
           <h2>Receiver's Details:</h2>
           <p><strong>Email:</strong> ${receiverEmail}</p>
@@ -239,6 +241,7 @@ exports.requestToDonate = async (req, res) => {
         const donorEmail = donorDetails.email;
         const donorsPhone = donorDetails.phoneNumber;
 
+        const url =`https://vitalblood.netlify.app/userProfile`
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
@@ -265,6 +268,7 @@ exports.requestToDonate = async (req, res) => {
           <p style="color: #333; margin-bottom: 10px;">
               I am writing to confirm my request to donate for your blood donation request. Please let me know the details and arrangements for the donation.
           </p>
+          <p>${url}</p>
           <h4 style="color: #A3000;">Contact me </h4>
           <p>Email: ${donorEmail} <br>Phone Number: ${donorsPhone}
           </p>
