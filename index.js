@@ -7,6 +7,7 @@ const connectDB = require('./Config/db');
 const user = require('./Routes/UserRoutes');
 const bodyParser = require('body-parser');
 const donation = require('./Routes/DonationRoutes');
+const notification =require('./Routes/NotificationRoute')
 const PORT = process.env.PORT || 3000;
 
 // app.use(express.json());
@@ -26,6 +27,7 @@ app.use(morgan('common'));
 
 app.use("/api/user", user);
 app.use('/api/donation', donation)
+app.use('/api/notification',notification)
 
 
 app.listen(PORT, () => {

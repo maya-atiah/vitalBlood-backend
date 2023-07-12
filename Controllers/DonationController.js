@@ -1,6 +1,8 @@
 const Donation = require('../Models/DonationModel');
 const UserDetails = require('../Models/UserDetailsModel')
 const RequestToDonate = require('../Models/RequestToDonate');
+const Notification = require('../Models/NotificationModel')
+const NotificationUser = require('../Models/NotificationUserModel')
 const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs');
@@ -128,22 +130,42 @@ exports.createDonationRequest = async (req, res) => {
 
         // Send an email to all users
         const users = await UserDetails.find().lean();
-        const userEmails = users.map((user) => user.email);
-       
+        // const userEmails = users.map((user) => user.email);
+        // userEmails.join(', ')
         const mailOptions = {
             from: 'vital.blood.donation@gmail.com',
             to: '',
-            bcc: userEmails.join(', '),
+            bcc: 'maya.atiah.99@gmail.com',
             subject: 'New Donation Request',
             html: html,
         };
 
         await transporter.sendMail(mailOptions);
 
+     
+        
+        for (const user of users) {
+            const notification = new Notification({
+                donation_id: donationRequest._id,
+                title: `New Donation Request`,
+                message:`A new donation request has been placed by ${receiverName}. Please check your account for details.`
+            })
+
+            await notification.save()
+
+            const notificationUser = new NotificationUser({
+                notification_id: notification._id,
+                user_id: user._id,
+
+            })
+
+            await notificationUser.save()
+        }
+
         return res.json(donationRequest);
+
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -177,12 +199,12 @@ exports.createBloodDonation = async (req, res) => {
         });
 
         await donation.save();
-
+5
+21.
 
         return res.json(donation);
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -284,10 +306,27 @@ exports.requestToDonate = async (req, res) => {
         };
 
         await transporter.sendMail(mailOptions);
+
+        const notification = new Notification({
+            donation_id: donationRequestId,
+            title: 'Donation Request',
+            message: `${donorDetails.firstName} ${donorDetails.lastName} requested to donate` 
+        })
+  
+        await notification.save()
+
+        const notificatioId = notification._id
+
+        const notificationUser = new NotificationUser({
+            notification_id: notificatioId,
+            user_id: donationRequest.receiver_id
+        })
+
+        await notificationUser.save()
+
         return res.json(modifiedRequestToDonate);
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -372,10 +411,28 @@ exports.acceptDonationRequest = async (req, res) => {
 
         await transporter.sendMail(mailOptions);
 
+        const message = status === 'accepted' ? 'Donation Request Accepted' : 'Donation Request Rejected';
+
+        const notification = new Notification({
+            donation_id: donationRequestId,
+            title: `${requestToDonate.status}`,
+            message:message
+        })
+
+        await notification.save();
+
+        const notificatioId = notification._id
+        
+        const notificationUser = new NotificationUser({
+            notification_id: notificatioId,
+            user_id: requestToDonate.donor_id
+        })
+        
+        await notificationUser.save()
+
         return res.json(requestToDonate);
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -399,8 +456,7 @@ exports.getAllDonationRequests = async (req, res) => {
             });
         return res.json(donationRequests);
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -424,8 +480,7 @@ exports.getDonationsByUser = async (req, res) => {
 
         return res.json(donations);
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -445,8 +500,7 @@ exports.getDonationById = async (req, res) => {
 
         return res.json(donation);
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -464,6 +518,10 @@ exports.deleteDonationById = async (req, res) => {
             return res.status(404).json({ message: 'Donation not found' });
         }
 
+
+        const notifications = await Notification.find({ donation_id: donationId })
+        
+        const notificationId = notifications.map(notification => notification._id)
         // Check if the user is the donor or receiver of the donation
         // if (
         //     donation.donor_id.toString() !== userId &&
@@ -476,10 +534,12 @@ exports.deleteDonationById = async (req, res) => {
         await Donation.findByIdAndDelete(donationId);
         await RequestToDonate.deleteMany({ donationRequest_id: donationId });
 
+        await Notification.deleteMany({ donation_id: donationId });
+        await NotificationUser.deleteMany({ notification_id: { $in: notificationId } });
+
         return res.json({ message: 'Donation and associated RequestToDonate deleted successfully' });
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: error.message });
     }
 };
 
