@@ -152,9 +152,11 @@ exports.createDonationRequest = async (req, res) => {
 
         await notification.save()
 
-        const notificationUsers = users.map((user) => ({
+        const otherUsers = users.filter((item) => item.user_id !== receiverDetails.user_id)
+        
+        const notificationUsers = otherUsers.map((user) => ({
             notification_id: notification._id,
-            user_id: user._id
+            user_id: user.user_id
         }))
 
         await NotificationUser.insertMany(notificationUsers);
