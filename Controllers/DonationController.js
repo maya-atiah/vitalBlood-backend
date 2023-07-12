@@ -144,23 +144,20 @@ exports.createDonationRequest = async (req, res) => {
 
      
         
-        for (const user of users) {
-            const notification = new Notification({
-                donation_id: donationRequest._id,
-                title: `New Donation Request`,
-                message:`A new donation request has been placed by ${receiverName}. Please check your account for details.`
-            })
+        const notification = new Notification({
+            donation_id: donationRequest._id,
+            title: `New Donation Request`,
+            message: `A new donation request has been placed by ${receiverName}. Please check your account for details.`
+        })
 
-            await notification.save()
+        await notification.save()
 
-            const notificationUser = new NotificationUser({
-                notification_id: notification._id,
-                user_id: user._id,
+        const notificationUsers = users.map((user) => ({
+            notification_id: notification._id,
+            user_id: user._id
+        }))
 
-            })
-
-            await notificationUser.save()
-        }
+        await NotificationUser.insertMany(notificationUsers);
 
         return res.json(donationRequest);
 
