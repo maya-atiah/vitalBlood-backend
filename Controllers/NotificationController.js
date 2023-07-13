@@ -22,10 +22,19 @@ exports.getNotificationByUserId = async (req, res) => {
     try {
         const userID = req.user
 
-        const notifications = await NotificationUser.find({ user_id: userID }).populate('notification_id').populate({
-            path: "user_id",
-            populate:{path:"details_id"},
+        const notifications = await NotificationUser.find({ user_id: userID }).populate({
+            path: "notification_id",
+            populate: {
+                path: "donation_id",
+                populate: {
+                    path: "receiver_id",
+                    populate: {
+                        path:"details_id"
+                    }
+                }
+            }
         })
+          
 
 
         if (notifications.length === 0) {
