@@ -152,7 +152,7 @@ exports.createDonationRequest = async (req, res) => {
 
         await notification.save()
 
-        const otherUsers = users.filter((item) => item.user_id !== receiverDetails.user_id)
+        const otherUsers = users.filter((item) => item.user_id != receiverDetails.user_id)
         
         const notificationUsers = otherUsers.map((user) => ({
             notification_id: notification._id,

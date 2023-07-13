@@ -22,7 +22,10 @@ exports.getNotificationByUserId = async (req, res) => {
     try {
         const userID = req.user
 
-        const notifications = await NotificationUser.find({ user_id: userID }).populate('notification_id')
+        const notifications = await NotificationUser.find({ user_id: userID }).populate('notification_id').populate({
+            path: "user_id",
+            populate:{path:"details_id"},
+        })
 
 
         if (notifications.length === 0) {
@@ -46,7 +49,7 @@ exports.viewedNotification = async (req, res) => {
         const notificationUser = await NotificationUser.findOne({
             notification_id: notificatioId,
             user_id: req.user
-        });
+        })
 
         if (!notificationUser) {
             return res.status(404).json({ message: 'Notification not found' });
